@@ -41,28 +41,34 @@ async function loadPosts(): Promise<InsightPost[]> {
 }
 
 async function writeSitemap(posts: InsightPost[]) {
+  // lastmod is hand-set from git history (most recent commit touching that route's own
+  // src/routes/*.tsx file), added 2026-08-27. Deliberately not auto-computed on every build --
+  // stamping every URL with the build date regardless of real content change is exactly the
+  // anti-pattern lastmod exists to avoid. Update the date by hand next time a page's actual
+  // content meaningfully changes.
   const staticPages = [
-    { loc: "/", changefreq: "weekly", priority: "1.0" },
-    { loc: "/calculator", changefreq: "monthly", priority: "0.9" },
-    { loc: "/sell-your-metal", changefreq: "monthly", priority: "0.9" },
-    { loc: "/compliance", changefreq: "monthly", priority: "0.8" },
-    { loc: "/aml-policy", changefreq: "monthly", priority: "0.8" },
-    { loc: "/insights", changefreq: "weekly", priority: "0.7" },
-    { loc: "/guides/corporate-liquidation", changefreq: "monthly", priority: "0.7" },
+    { loc: "/", changefreq: "weekly", priority: "1.0", lastmod: "2026-08-27" },
+    { loc: "/calculator", changefreq: "monthly", priority: "0.9", lastmod: "2026-08-26" },
+    { loc: "/sell-your-metal", changefreq: "monthly", priority: "0.9", lastmod: "2026-08-26" },
+    { loc: "/compliance", changefreq: "monthly", priority: "0.8", lastmod: "2026-08-25" },
+    { loc: "/aml-policy", changefreq: "monthly", priority: "0.8", lastmod: "2026-08-25" },
+    { loc: "/insights", changefreq: "weekly", priority: "0.7", lastmod: "2026-08-25" },
+    { loc: "/guides/corporate-liquidation", changefreq: "monthly", priority: "0.7", lastmod: "2026-08-25" },
   ];
 
   // Only posts with a real page (see InsightPost.body in src/content/types.ts) -- a teaser
-  // card with no body has no route to submit to search engines.
-  const published = posts.filter((p) => p.body?.length);
+  // card with no body has no route to submit to search engines. A held post (see
+  // InsightPost.hold) is a draft, not a published page, so it is never submitted either.
+  const published = posts.filter((p) => p.body?.length && !p.hold);
 
   const urls = [
     ...staticPages.map(
       (p) =>
-        `  <url>\n    <loc>${SITE_URL}${p.loc}</loc>\n    <changefreq>${p.changefreq}</changefreq>\n    <priority>${p.priority}</priority>\n  </url>`,
+        `  <url>\n    <loc>${SITE_URL}${p.loc}</loc>\n    <lastmod>${p.lastmod}</lastmod>\n    <changefreq>${p.changefreq}</changefreq>\n    <priority>${p.priority}</priority>\n  </url>`,
     ),
     ...published.map(
       (p) =>
-        `  <url>\n    <loc>${SITE_URL}/insights/${p.slug}</loc>\n    <lastmod>${p.date}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>\n  </url>`,
+        `  <url>\n    <loc>${SITE_URL}/insights/${p.slug}</loc>\n    <lastmod>${p.updated ?? p.date}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>\n  </url>`,
     ),
   ].join("\n");
 
@@ -72,7 +78,7 @@ async function writeSitemap(posts: InsightPost[]) {
 }
 
 async function writeLlmsTxt(posts: InsightPost[]) {
-  const published = posts.filter((p) => p.body?.length).sort((a, b) => (a.date < b.date ? 1 : -1));
+  const published = posts.filter((p) => p.body?.length && !p.hold).sort((a, b) => (a.date < b.date ? 1 : -1));
 
   const lines = [
     "# Tess Van Ghert",

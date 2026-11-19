@@ -2,7 +2,14 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
 import { Section, RuleGold, Overline, Btn, Chip } from "@/components/site/Section";
-import { ArticleBlocks, ArticleFaq, ArticleToc, tocFromBlocks } from "@/components/site/Article";
+import {
+  ArticleBlocks,
+  ArticleDisclaimer,
+  ArticleFaq,
+  ArticleSources,
+  ArticleToc,
+  tocFromBlocks,
+} from "@/components/site/Article";
 import { getInsightBySlug } from "@/content/insights";
 import { buildArticleHead } from "@/lib/article-seo";
 import { formatDisplayDate } from "@/lib/dates";
@@ -26,17 +33,20 @@ export const Route = createFileRoute("/insights/$slug")({
 function InsightArticlePage() {
   const post = Route.useLoaderData();
   const toc = tocFromBlocks(post.body ?? []);
-  const byline = [
-    post.author ? `${post.author.name}${post.author.title ? `, ${post.author.title}` : ""}` : null,
-    formatDisplayDate(post.date),
-    post.readTime,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const authorLabel = post.author ? `${post.author.name}${post.author.title ? `, ${post.author.title}` : ""}` : null;
+  // Shown only when the content or its sources were re-checked after publication.
+  const showUpdated = Boolean(post.updated && post.updated !== post.date);
 
   return (
     <>
       <Nav />
+
+      {/* A held post only renders in a local preview (VITE_SHOW_HELD=1); never on a live site. */}
+      {post.hold && (
+        <div role="note" className="border-b border-[var(--accent)] bg-[var(--accent-quiet)] px-5 py-3 text-[14px] text-[var(--text-strong)] md:px-8">
+          <span className="font-medium">Held draft, not published.</span> Release gate: {post.hold}
+        </div>
+      )}
 
       {/* HERO */}
       <section className="bg-ink text-inverse py-20 md:py-24">
@@ -70,11 +80,26 @@ function InsightArticlePage() {
 
           <article className="max-w-[68ch]">
             <RuleGold />
-            <p className="text-[14px] text-[var(--text-muted)]">{byline}</p>
+            <p className="text-[14px] text-[var(--text-muted)]">
+              {authorLabel && <>{authorLabel} · </>}
+              <time dateTime={post.date}>{formatDisplayDate(post.date)}</time>
+              {showUpdated && post.updated && (
+                <>
+                  {" · Updated "}
+                  <time dateTime={post.updated}>{formatDisplayDate(post.updated)}</time>
+                </>
+              )}
+              {" · "}
+              {post.readTime}
+            </p>
 
             <ArticleBlocks blocks={post.body ?? []} />
 
             {post.faq && post.faq.length > 0 && <ArticleFaq items={post.faq} />}
+
+            {post.sources && post.sources.length > 0 && <ArticleSources items={post.sources} />}
+
+            {post.disclaimer && <ArticleDisclaimer text={post.disclaimer} />}
 
             {/* CTA — same pattern as guides/corporate-liquidation.tsx, deliberately, so every
                 article page ends on the same ask and the same internal links. */}

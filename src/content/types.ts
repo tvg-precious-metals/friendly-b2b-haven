@@ -11,23 +11,40 @@
  * post is also touching.
  */
 
+/**
+ * Text fields (p, list and ol items, steps, callout, FAQ answers) may carry inline links as
+ * `[link text](/path)`. Only site-relative paths are meant to be used. A link to an
+ * /insights/{slug} post that is not currently published renders as plain text, so a post can
+ * link to a sibling that is still held without ever showing a dead link.
+ */
 export type ContentBlock =
   | { type: "p"; text: string }
   /** Section heading. Give it an id (kebab-case) to get an automatic table-of-contents entry. */
   | { type: "h2"; id?: string; text: string }
   | { type: "h3"; id?: string; text: string }
   | { type: "list"; items: string[] }
+  /** Numbered list of short items (a sequence the reader follows in order). For process
+   * steps that each need a title and a paragraph, use `steps` instead. */
+  | { type: "ol"; items: string[] }
   /** Numbered process steps, rendered like the homepage's "How it works" / the guide's "seven-step process". */
   | { type: "steps"; items: { title: string; body: string }[] }
   /** A "What this means" / "Why it matters" pull-box — HubSpot's AEO guidance specifically
    * recommends these: a short, extractable, answer-first summary a reader (or an AI system
-   * skimming the page) can lift without reading the surrounding prose. */
-  | { type: "callout"; label: string; text: string }
+   * skimming the page) can lift without reading the surrounding prose. The label is optional:
+   * leave it out and the box shows the text alone. */
+  | { type: "callout"; label?: string; text: string }
   | { type: "quote"; text: string; attribution?: string };
 
 export interface FaqItem {
   q: string;
   a: string;
+}
+
+/** One entry in a post's visible "Sources" list: publisher, title and date as the label, and
+ * the page it was read at as the link. Also emitted as `citation` in the Article JSON-LD. */
+export interface SourceRef {
+  label: string;
+  url: string;
 }
 
 /** Matches the five pillars in TessPreciousMetals/ContentCreation/TVG-Content-Agent-Build-Plan.md. */
@@ -62,6 +79,10 @@ export interface InsightPost {
   /** ISO date, e.g. "2026-06-12". Formatted for display and used as JSON-LD datePublished —
    * store it once, in one format, and format-for-display happens in code (formatDisplayDate). */
   date: string;
+  /** Optional ISO date of the last substantive change or source check. Shown in the byline
+   * ("Updated 12 June 2026"), used as JSON-LD dateModified and as the sitemap lastmod. Set it
+   * only when the content or its sources were actually re-checked, never to stamp a build. */
+  updated?: string;
   /** e.g. "6 min read". */
   readTime: string;
   /**
@@ -85,6 +106,25 @@ export interface InsightPost {
   /** Optional. Rendered as real visible H3+paragraph FAQ content (also emits FAQPage JSON-LD —
    * see the build log for why that schema is hygiene now, not a citation lever). */
   faq?: FaqItem[];
+  /** Optional. The dated primary sources behind the article, shown as a visible "Sources" list
+   * after the FAQ and emitted as `citation` in the Article JSON-LD. */
+  sources?: SourceRef[];
+  /** Optional. A short general-information notice shown after the sources, e.g. on tax and
+   * accounting posts ("general information as at {date}, not advice"). */
+  disclaimer?: string;
+  /**
+   * Release gate. While this is set the post is NOT published: the collector in
+   * src/content/insights.ts drops it, so it has no page, no card on /insights, no sitemap or
+   * llms.txt entry, and links to it from other posts render as plain text. The string says
+   * what has to be cleared first (reviewer, check or decision), for whoever releases it.
+   * Held drafts live in src/content/insights/held/, a git-ignored folder that a deployed build
+   * never contains. For a local preview run the dev server with VITE_SHOW_HELD=1: held posts then
+   * render with a "held draft" banner and a noindex tag.
+   * To release a post: clear the gate, move the file up one folder, set `date` (and `updated`) to
+   * the release date, delete this field, run `bun run sitemap`, and ship it through a reviewed
+   * pull request.
+   */
+  hold?: string;
   /** Optional per-post social-share image; falls back to the sitewide default. */
   ogImage?: string;
 }

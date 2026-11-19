@@ -1,4 +1,5 @@
 import type { InsightPost } from "@/content/types";
+import { stripInlineLinks } from "./inline-links";
 import { ORG_NAME, SITE_URL, pageMeta } from "./seo";
 
 /**
@@ -24,12 +25,19 @@ export function buildArticleHead(post: InsightPost) {
     headline: post.title,
     description: post.description,
     datePublished: post.date,
+    // Last substantive change or source check; falls back to the publication date.
+    dateModified: post.updated ?? post.date,
+    inLanguage: "en-GB",
     author: post.author
       ? { "@type": "Person", name: post.author.name, ...(post.author.title ? { jobTitle: post.author.title } : {}) }
       : { "@type": "Organization", name: ORG_NAME },
     publisher: { "@type": "Organization", name: ORG_NAME, url: SITE_URL },
     mainEntityOfPage: url,
     ...(post.ogImage ? { image: post.ogImage } : {}),
+    // The dated primary sources shown in the visible "Sources" list, as schema.org `citation`.
+    ...(post.sources?.length
+      ? { citation: post.sources.map((s) => ({ "@type": "CreativeWork", name: s.label, url: s.url })) }
+      : {}),
   };
 
   const scripts = [{ type: "application/ld+json", children: JSON.stringify(articleJsonLd) }];
@@ -47,11 +55,15 @@ export function buildArticleHead(post: InsightPost) {
         mainEntity: post.faq.map((f) => ({
           "@type": "Question",
           name: f.q,
-          acceptedAnswer: { "@type": "Answer", text: f.a },
+          acceptedAnswer: { "@type": "Answer", text: stripInlineLinks(f.a) },
         })),
       }),
     });
   }
 
-  return { ...base, scripts };
+  // A held post only renders in a local preview (VITE_SHOW_HELD=1, see src/content/insights.ts).
+  // If one ever reached a live deployment by mistake, keep it out of search indexes.
+  const meta = post.hold ? [...base.meta, { name: "robots", content: "noindex, nofollow" }] : base.meta;
+
+  return { ...base, meta, scripts };
 }

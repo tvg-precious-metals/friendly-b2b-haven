@@ -58,6 +58,11 @@ export const TEMPLATE = {
   // ISO date. Formatted for display automatically (formatDisplayDate in src/lib/dates.ts).
   date: "2026-08-24",
 
+  // Optional. ISO date of the last substantive change or source check. Shown in the byline
+  // ("Updated ...") and used as JSON-LD dateModified and the sitemap lastmod. Set it only
+  // after a real re-check, never to stamp a build.
+  // updated: "2026-09-02",
+
   readTime: "6 min read",
 
   // Optional. A named byline is a real, current E-E-A-T signal (see the build log's
@@ -133,6 +138,12 @@ export const TEMPLATE = {
       attribution: "Attribution, if applicable",
     },
     {
+      type: "ol",
+      // A numbered list of short items. Any text field may also hold an inline link,
+      // written [link text](/path); a link to an unpublished /insights post shows as text.
+      items: ["First short item, with a [link to the calculator](/calculator).", "Second short item."],
+    },
+    {
       type: "h3",
       text: "A minor subsection heading (no id — not promoted to the table of contents).",
     },
@@ -157,6 +168,19 @@ export const TEMPLATE = {
       a: "A second answer.",
     },
   ],
+
+  // Optional. The dated primary sources behind the article: a visible "Sources" list after
+  // the FAQ, also emitted as `citation` in the Article JSON-LD.
+  // sources: [
+  //   { label: "Publisher, document title, date", url: "https://example.org/document" },
+  // ],
+
+  // Optional. A short general-information notice shown after the sources.
+  // disclaimer: "This article is general information as at 24 August 2026, not advice.",
+
+  // Optional release gate. While set, the post is a draft: not published, not in the sitemap
+  // or llms.txt, links to it show as text. Preview with VITE_SHOW_HELD=1. Delete to release.
+  // hold: "Reviewer sign-off pending.",
 
   // Optional. Overrides the sitewide default OG image for this one post. Omit unless
   // a real, on-brand image exists for this specific article — the sitewide default

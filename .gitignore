@@ -30,3 +30,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Held blog drafts: never committed, never built into the site (see src/content/insights/README.md)
+src/content/insights/held/

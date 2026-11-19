@@ -57,8 +57,9 @@ async function writeSitemap(posts: InsightPost[]) {
   ];
 
   // Only posts with a real page (see InsightPost.body in src/content/types.ts) -- a teaser
-  // card with no body has no route to submit to search engines.
-  const published = posts.filter((p) => p.body?.length);
+  // card with no body has no route to submit to search engines. A held post (see
+  // InsightPost.hold) is a draft, not a published page, so it is never submitted either.
+  const published = posts.filter((p) => p.body?.length && !p.hold);
 
   const urls = [
     ...staticPages.map(
@@ -67,7 +68,7 @@ async function writeSitemap(posts: InsightPost[]) {
     ),
     ...published.map(
       (p) =>
-        `  <url>\n    <loc>${SITE_URL}/insights/${p.slug}</loc>\n    <lastmod>${p.date}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>\n  </url>`,
+        `  <url>\n    <loc>${SITE_URL}/insights/${p.slug}</loc>\n    <lastmod>${p.updated ?? p.date}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>\n  </url>`,
     ),
   ].join("\n");
 
@@ -77,7 +78,7 @@ async function writeSitemap(posts: InsightPost[]) {
 }
 
 async function writeLlmsTxt(posts: InsightPost[]) {
-  const published = posts.filter((p) => p.body?.length).sort((a, b) => (a.date < b.date ? 1 : -1));
+  const published = posts.filter((p) => p.body?.length && !p.hold).sort((a, b) => (a.date < b.date ? 1 : -1));
 
   const lines = [
     "# Tess Van Ghert",

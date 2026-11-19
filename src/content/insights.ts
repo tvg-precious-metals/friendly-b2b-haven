@@ -10,7 +10,16 @@ import type { InsightPost } from "./types";
  */
 const modules = import.meta.glob<{ default?: InsightPost }>("./insights/*.ts", { eager: true });
 
-const entries = Object.entries(modules)
+// Held drafts live in ./insights/held/, a git-ignored folder, so a deployed build never has those
+// files. For local preview only, the dev server also loads that folder when VITE_SHOW_HELD=1.
+// import.meta.env.DEV is replaced by a constant at build time (false in a production build), so a
+// production build contains neither the folder's files nor this branch.
+const SHOW_HELD = import.meta.env.DEV && import.meta.env.VITE_SHOW_HELD === "1";
+const heldModules: Record<string, { default?: InsightPost }> = SHOW_HELD
+  ? import.meta.glob<{ default?: InsightPost }>("./insights/held/*.ts", { eager: true })
+  : {};
+
+const entries = Object.entries({ ...modules, ...heldModules })
   .filter(([, mod]) => Boolean(mod.default))
   .map(([path, mod]) => [path, mod.default as InsightPost] as const);
 
@@ -27,7 +36,13 @@ for (const [path, post] of entries) {
   seenSlugs.set(post.slug, path);
 }
 
-const allPosts: InsightPost[] = entries.map(([, post]) => post);
+// Held posts (see InsightPost.hold in ./types) are drafts that exist in the repo but are not
+// published: they are left out of everything below, so they get no page, no card on /insights,
+// and links to them render as plain text. The duplicate-slug check above deliberately still
+// covers them, so a held post cannot collide with a live slug unnoticed. A post in the main folder
+// that still carries a `hold` string is left out as well (the safety net). Only the local
+// preview (SHOW_HELD above) includes held posts, with a banner and a noindex tag on the page.
+const allPosts: InsightPost[] = entries.map(([, post]) => post).filter((post) => SHOW_HELD || !post.hold);
 
 /** All posts, newest first. */
 export function getAllInsights(): InsightPost[] {
